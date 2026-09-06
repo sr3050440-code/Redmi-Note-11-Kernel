@@ -19,8 +19,8 @@ jobs:
 
     - name: Download Toolchains
       run: |
-        # Android AOSP Clang 10.0.1 (r383902) - Standard for 4.19 Qualcomm Kernels
-        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r383902 clang
+        # Public Working AOSP Clang
+        git clone --depth=1 https://gitlab.com/ZyCromerZ/Clang/host/linux-x86/clang-r383902 clang
         # GCC 64-bit & 32-bit
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
