@@ -29,7 +29,7 @@ jobs:
         sed -i 's/^SUBLEVEL =.*/SUBLEVEL = 157/' Makefile
         sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION =/' Makefile
 
-        # Sahi Performance Defconfig Select Karein (WALT/RTG Scheduler Fix)
+        # Sahi Performance Defconfig Select Karein
         DEFCONFIG=""
         for config in vendor/spes-perf_defconfig vendor/spes_defconfig spes-perf_defconfig spes_defconfig; do
           if [ -f "arch/arm64/configs/$config" ]; then
@@ -73,5 +73,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Redmi-Note-11-Kernel-Image
-        path: out/arch/arm64/boot/Image.gz-dtb
-        
+        path: |
+          out/arch/arm64/boot/Image*
+          out/arch/arm64/boot/dt*
+          
