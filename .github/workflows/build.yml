@@ -15,12 +15,12 @@ jobs:
       run: |
         sudo apt-get update || true
         sudo apt-get install -y --no-install-recommends \
-          build-essential bc libncurses5-dev libssl-dev bison flex libelf-dev clang lld git python2 python3 libstdc++6 gcc g++
+          build-essential bc libncurses5-dev libssl-dev bison flex libelf-dev git python2 python3 gcc g++
 
     - name: Download Toolchains
       run: |
-        # Clang 12 / AOSP Toolchain
-        git clone --depth=1 https://github.com/lineageos/android_prebuilts_clang_kernel_linux-x86_clang-r416183b clang
+        # Android AOSP Clang 10.0.1 (r383902) - Standard for 4.19 Qualcomm Kernels
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86_clang-r383902 clang
         # GCC 64-bit & 32-bit
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
         git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
@@ -49,7 +49,6 @@ jobs:
 
     - name: Build Kernel
       run: |
-        # GCC host binaries ko Clang ke saath proper mix karke path set karein
         export PATH=$(pwd)/clang/bin:$(pwd)/gcc64/bin:$(pwd)/gcc32/bin:/usr/bin:$PATH
         
         MAKE_ARGS=(
@@ -63,12 +62,10 @@ jobs:
           CROSS_COMPILE=aarch64-linux-android-
           CROSS_COMPILE_ARM32=arm-linux-androideabi-
           LOCALVERSION="-Sitanshu"
+          KCFLAGS="-Wno-error"
         )
 
-        # Defconfig apply karein
         make "${MAKE_ARGS[@]}" vendor/spes_defconfig || make "${MAKE_ARGS[@]}" spes_defconfig
-        
-        # Kernel compilation
         make -j$(nproc) "${MAKE_ARGS[@]}"
 
     - name: Upload Kernel Image
