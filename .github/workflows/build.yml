@@ -19,51 +19,54 @@ jobs:
 
     - name: Download Toolchains
       run: |
-        # Proton Clang 13 - Fixes RCU and Qualcomm C-code compilation errors
+        # Proton Clang aur Android GCC 4.9 Binutils
         git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
 
     - name: Update Makefile and Defconfig Parameters
       run: |
-        # SUBLEVEL ko 157 set karein
         sed -i 's/^SUBLEVEL =.*/SUBLEVEL = 157/' Makefile
         sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION =/' Makefile
 
-        # Target Defconfig File dhoondhein
-        DEFCONFIG="arch/arm64/configs/vendor/spes_defconfig"
-        if [ ! -f "$DEFCONFIG" ]; then
-          DEFCONFIG="arch/arm64/configs/spes_defconfig"
-        fi
+        # Sahi Performance Defconfig Select Karein (WALT/RTG Scheduler Fix)
+        DEFCONFIG=""
+        for config in vendor/spes-perf_defconfig vendor/spes_defconfig spes-perf_defconfig spes_defconfig; do
+          if [ -f "arch/arm64/configs/$config" ]; then
+            DEFCONFIG="$config"
+            break
+          fi
+        done
+        echo "DEFCONFIG_NAME=$DEFCONFIG" >> $GITHUB_ENV
 
-        # Custom Localversion (-Sitanshu) Set Karein
-        echo "CONFIG_LOCALVERSION=\"-Sitanshu\"" >> $DEFCONFIG
+        # Custom Localversion (-Sitanshu)
+        echo "CONFIG_LOCALVERSION=\"-Sitanshu\"" >> "arch/arm64/configs/$DEFCONFIG"
 
-        # Module Signature Verification OFF Karein
-        sed -i 's/CONFIG_MODULE_SIG=y/# CONFIG_MODULE_SIG is not set/' $DEFCONFIG || true
-        sed -i 's/CONFIG_MODULE_SIG_ALL=y/# CONFIG_MODULE_SIG_ALL is not set/' $DEFCONFIG || true
-        sed -i 's/CONFIG_MODULE_SIG_FORCE=y/# CONFIG_MODULE_SIG_FORCE is not set/' $DEFCONFIG || true
-        echo "CONFIG_MODULE_SIG=n" >> $DEFCONFIG
-        echo "# CONFIG_MODULE_SIG_ALL is not set" >> $DEFCONFIG
+        # Disable Module Signature Verification
+        sed -i 's/CONFIG_MODULE_SIG=y/# CONFIG_MODULE_SIG is not set/' "arch/arm64/configs/$DEFCONFIG" || true
+        sed -i 's/CONFIG_MODULE_SIG_ALL=y/# CONFIG_MODULE_SIG_ALL is not set/' "arch/arm64/configs/$DEFCONFIG" || true
+        sed -i 's/CONFIG_MODULE_SIG_FORCE=y/# CONFIG_MODULE_SIG_FORCE is not set/' "arch/arm64/configs/$DEFCONFIG" || true
+        echo "CONFIG_MODULE_SIG=n" >> "arch/arm64/configs/$DEFCONFIG"
+        echo "# CONFIG_MODULE_SIG_ALL is not set" >> "arch/arm64/configs/$DEFCONFIG"
 
     - name: Build Kernel
       run: |
-        export PATH=$(pwd)/clang/bin:$PATH
+        export PATH=$(pwd)/clang/bin:$(pwd)/gcc64/bin:$(pwd)/gcc32/bin:/usr/bin:$PATH
         
         MAKE_ARGS=(
           O=out
           ARCH=arm64
           SUBARCH=arm64
           CC=clang
-          CROSS_COMPILE=aarch64-linux-gnu-
-          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-          AR=llvm-ar
-          NM=llvm-nm
-          OBJCOPY=llvm-objcopy
-          OBJDUMP=llvm-objdump
-          STRIP=llvm-strip
+          CLANG_TRIPLE=aarch64-linux-gnu-
+          CROSS_COMPILE=aarch64-linux-android-
+          CROSS_COMPILE_ARM32=arm-linux-androideabi-
           LOCALVERSION="-Sitanshu"
+          KCFLAGS="-Wno-error"
+          KCPPFLAGS="-Wno-error"
         )
 
-        make "${MAKE_ARGS[@]}" vendor/spes_defconfig || make "${MAKE_ARGS[@]}" spes_defconfig
+        make "${MAKE_ARGS[@]}" "$DEFCONFIG_NAME"
         make -j$(nproc) "${MAKE_ARGS[@]}"
 
     - name: Upload Kernel Image
