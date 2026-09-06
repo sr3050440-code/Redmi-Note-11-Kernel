@@ -1,0 +1,68 @@
+name: Build Redmi Note 11 Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Set up Build Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev bison flex libelf-dev clang lld git python2 python3
+
+    - name: Download Toolchains
+      run: |
+        # Clang 12 / AOSP Toolchain
+        git clone --depth=1 https://github.com/lineageos/android_prebuilts_clang_kernel_linux-x86_clang-r416183b clang
+        # GCC 64-bit & 32-bit
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
+
+    - name: Update Makefile and Defconfig Parameters
+      run: |
+        # SUBLEVEL ko 157 set karein
+        sed -i 's/^SUBLEVEL =.*/SUBLEVEL = 157/' Makefile
+        sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION =/' Makefile
+
+        # Target Defconfig File dhoondhein
+        DEFCONFIG="arch/arm64/configs/vendor/spes_defconfig"
+        if [ ! -f "$DEFCONFIG" ]; then
+          DEFCONFIG="arch/arm64/configs/spes_defconfig"
+        fi
+
+        # Custom Localversion (-Sitanshu) Set Karein
+        echo "CONFIG_LOCALVERSION=\"-Sitanshu\"" >> $DEFCONFIG
+
+        # Module Signature Verification OFF Karein
+        sed -i 's/CONFIG_MODULE_SIG=y/# CONFIG_MODULE_SIG is not set/' $DEFCONFIG || true
+        sed -i 's/CONFIG_MODULE_SIG_ALL=y/# CONFIG_MODULE_SIG_ALL is not set/' $DEFCONFIG || true
+        sed -i 's/CONFIG_MODULE_SIG_FORCE=y/# CONFIG_MODULE_SIG_FORCE is not set/' $DEFCONFIG || true
+        echo "CONFIG_MODULE_SIG=n" >> $DEFCONFIG
+        echo "# CONFIG_MODULE_SIG_ALL is not set" >> $DEFCONFIG
+
+    - name: Build Kernel
+      run: |
+        export PATH=$(pwd)/clang/bin:$(pwd)/gcc64/bin:$(pwd)/gcc32/bin:$PATH
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CC=clang
+        export CLANG_TRIPLE=aarch64-linux-gnu-
+        export CROSS_COMPILE=aarch64-linux-android-
+        export CROSS_COMPILE_ARM32=arm-linux-androideabi-
+        export LOCALVERSION="-Sitanshu"
+
+        make O=out vendor/spes_defconfig || make O=out spes_defconfig
+        make -j$(nproc) O=out LOCALVERSION="-Sitanshu"
+
+    - name: Upload Kernel Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: Redmi-Note-11-Kernel-Image
+        path: out/arch/arm64/boot/Image.gz-dtb
+        
